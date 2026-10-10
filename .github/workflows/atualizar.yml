@@ -2,8 +2,11 @@ name: Atualizar o radar
 
 on:
   schedule:
-    # Todo dia as 06:00 de Brasilia (09:00 UTC).
-    - cron: "0 9 * * *"
+    # Toda segunda-feira as 06:00 de Brasilia (09:00 UTC).
+    # Semanal, e nao diario, porque a Camara publica as notas ao longo do mes:
+    # rodar todo dia gastaria minutos de Actions para quase nunca mudar nada.
+    # Para atualizar na hora, use o botao "Run workflow" (workflow_dispatch).
+    - cron: "0 9 * * 1"
   workflow_dispatch:
 
 permissions:
