@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar da Cota — gastos fora do padrão na cota parlamentar</title>
+<meta name="description" content="Monitor dos gastos da Cota para o Exercício da Atividade Parlamentar (CEAP) que aponta os casos fora do padrão: notas atípicas, subcota concentrada em um fornecedor, fracionamento e documento repetido.">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Radar da Cota">
+<meta property="og:description" content="Onde os gastos da cota parlamentar saem do padrão.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --fundo: #0b0e14;
+    --cartao: #131926;
+    --cartao-alto: #1a2130;
+    --borda: #232c3d;
+    --texto: #e7eaf0;
+    --apagado: #8c96a8;
+    --alerta: #ff5a5a;
+    --alerta-fundo: #2a1418;
+    --ouro: #ffc857;
+    --verde: #3ddc97;
+    --azul: #5b9dff;
+    --raio: 12px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--texto);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding-bottom: 4rem;
+  }
+  .limite { width: min(1080px, 100% - 2rem); margin-inline: auto; }
+  a { color: var(--azul); }
+  a:hover { color: #8fbcff; }
+
+  header.topo { border-bottom: 1px solid var(--borda); padding: 1.75rem 0 2rem; }
+  .marca {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font: 600 .8rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+    color: var(--alerta);
+  }
+  .marca::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--alerta); box-shadow: 0 0 0 4px rgba(255,90,90,.16);
+  }
+  h1 { font-size: clamp(1.6rem, 5vw, 2.6rem); line-height: 1.15; margin: 1rem 0 .6rem; letter-spacing: -.02em; }
+  header.topo p { margin: 0; color: var(--apagado); max-width: 62ch; }
+  .selo { font: .8rem/1.5 var(--mono); color: var(--apagado); margin-top: .9rem; }
+
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+  .numero { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: .9rem 1rem; }
+  .numero b { display: block; font-size: 1.4rem; letter-spacing: -.02em; }
+  .numero span { display: block; color: var(--apagado); font-size: .8rem; margin-top: .15rem; }
+  .numero.destaque b { color: var(--alerta); }
+
+  nav.abas { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .5rem; border-bottom: 1px solid var(--borda); position: sticky; top: 0; background: var(--fundo); z-index: 5; }
+  nav.abas button {
+    flex: 0 0 auto; background: none; border: 0; color: var(--apagado); cursor: pointer;
+    font: inherit; font-size: .92rem; padding: .6rem .8rem; border-bottom: 2px solid transparent;
+  }
+  nav.abas button[aria-selected="true"] { color: var(--texto); border-bottom-color: var(--alerta); }
+  nav.abas button:hover { color: var(--texto); }
+
+  section[hidden] { display: none; }
+  h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
+  h2:first-child { margin-top: 1.5rem; }
+
+  .filtros { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1.25rem 0 1rem; }
+  .filtros button {
+    background: var(--cartao); border: 1px solid var(--borda); color: var(--apagado);
+    border-radius: 999px; padding: .35rem .75rem; font: inherit; font-size: .82rem; cursor: pointer;
+  }
+  .filtros button[aria-pressed="true"] { background: var(--cartao-alto); color: var(--texto); border-color: #3a465e; }
+  .filtros .contagem { color: var(--apagado); font-family: var(--mono); font-size: .78rem; }
+
+  .alerta { background: var(--cartao); border: 1px solid var(--borda); border-left: 3px solid var(--ouro); border-radius: var(--raio); padding: 1rem; margin-bottom: .6rem; }
+  .alerta.g3 { border-left-color: var(--alerta); }
+  .alerta.g1 { border-left-color: var(--azul); }
+  .alerta-topo { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; justify-content: space-between; }
+  .alerta h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+  .alerta .valor { font: 600 1.05rem/1 var(--mono); color: var(--ouro); white-space: nowrap; }
+  .alerta.g3 .valor { color: var(--alerta); }
+  .alerta p { margin: .5rem 0 0; color: #c3cad6; font-size: .92rem; }
+  .etiqueta {
+    display: inline-block; font: 600 .68rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--apagado); background: var(--cartao-alto); border: 1px solid var(--borda);
+    border-radius: 999px; padding: .25rem .5rem;
+  }
+  .notas { margin: .7rem 0 0; padding: 0; list-style: none; font: .82rem/1.7 var(--mono); color: var(--apagado); border-top: 1px dashed var(--borda); padding-top: .5rem; }
+  .notas li { display: flex; justify-content: space-between; gap: 1rem; }
+  .notas a { color: var(--apagado); text-decoration: underline dotted; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--borda); }
+  th { color: var(--apagado); font-weight: 500; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+  td.num, th.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+  tbody tr:hover { background: var(--cartao); }
+  .pos { color: var(--apagado); font-family: var(--mono); font-size: .78rem; width: 2rem; }
+  .barra { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--alerta), var(--ouro)); min-width: 2px; }
+  .rolagem { overflow-x: auto; }
+
+  .caixa { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 1rem 1.15rem; margin-bottom: .75rem; }
+  .caixa h3 { margin: 0 0 .35rem; font-size: .98rem; }
+  .caixa .pergunta { color: var(--texto); font-style: italic; }
+  .caixa p { margin: .4rem 0 0; color: #c3cad6; font-size: .9rem; }
+  .caixa .numero-regra { font-family: var(--mono); font-size: .78rem; color: var(--apagado); }
+
+  footer { border-top: 1px solid var(--borda); margin-top: 3rem; padding-top: 1.25rem; color: var(--apagado); font-size: .85rem; }
+  footer p { margin: .4rem 0; }
+  .aviso { background: var(--alerta-fundo); border: 1px solid #4a2028; border-radius: var(--raio); padding: 1rem 1.15rem; margin: 1.5rem 0; font-size: .9rem; color: #f0cdd1; }
+  .aviso b { color: #ffd7db; }
+  @media (max-width: 560px) {
+    .numero b { font-size: 1.2rem; }
+    th, td { padding: .45rem .4rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="limite">
+    <span class="marca">radar da cota</span>
+    <h1>Onde os gastos da cota parlamentar saem do padrão</h1>
+    <p>Todo deputado federal tem uma cota para pagar combustível, passagem, aluguel de escritório, divulgação e mais uma dúzia de coisas. A Câmara publica cada nota. Este radar lê as {{NOTAS}} notas de {{ANO}} e aponta as que fogem do padrão.</p>
+    <p class="selo">Fonte: Câmara dos Deputados · arquivo público da CEAP · dados de {{ANO}} · atualizado em {{GERADO_EM}}</p>
+  </div>
+</header>
+
+<div class="limite">
+  <div class="numeros">{{NUMEROS}}</div>
+
+  <nav class="abas" role="tablist">
+    <button role="tab" aria-selected="true" data-aba="alertas">Alertas <span class="contagem">{{TOTAL_ALERTAS}}</span></button>
+    <button role="tab" aria-selected="false" data-aba="deputados">Deputados</button>
+    <button role="tab" aria-selected="false" data-aba="fornecedores">Fornecedores</button>
+    <button role="tab" aria-selected="false" data-aba="subcotas">Subcotas</button>
+    <button role="tab" aria-selected="false" data-aba="estados">Estados e partidos</button>
+    <button role="tab" aria-selected="false" data-aba="metodo">Como funciona</button>
+  </nav>
+
+  <main>
+    <section id="aba-alertas">
+      <div class="filtros" id="filtros"></div>
+      <p class="selo" id="contagem-alertas"></p>
+      <div id="lista-alertas"></div>
+    </section>
+
+    <section id="aba-deputados" hidden>
+      <h2>Quem mais gastou a cota</h2>
+      <p class="selo">Valor líquido pago, somando todas as subcotas do ano. A cota é individual e o teto varia por estado, então o ranking diz pouco sozinho — serve para dar escala ao que vem depois.</p>
+      <div class="rolagem"><table id="tabela-deputados"></table></div>
+    </section>
+
+    <section id="aba-fornecedores" hidden>
+      <h2>Quem mais recebeu</h2>
+      <p class="selo">Empresas e pessoas que mais receberam da cota, somando todos os parlamentares. A maioria é fornecedor legítimo e recorrente: gráfica, locadora, companhia aérea. Vale olhar as que aparecem para um parlamentar só.</p>
+      <div class="rolagem"><table id="tabela-fornecedores"></table></div>
+    </section>
+
+    <section id="aba-subcotas" hidden>
+      <h2>Para onde vai o dinheiro</h2>
+      <p class="selo">Cada linha é uma subcota, do maior gasto para o menor.</p>
+      <div class="rolagem"><table id="tabela-subcotas"></table></div>
+      <h2>Por mês</h2>
+      <p class="selo">O gasto da cota não é uniforme: sobe com a atividade legislativa e cai no recesso.</p>
+      <div class="rolagem"><table id="tabela-meses"></table></div>
+    </section>
+
+    <section id="aba-estados" hidden>
+      <h2>Por estado</h2>
+      <p class="selo">O teto da cota depende da distância até Brasília: Roraima e Acre têm o maior, Distrito Federal o menor. Estado com muita gente gasta mais no total, e isso não quer dizer nada por si.</p>
+      <div class="rolagem"><table id="tabela-estados"></table></div>
+      <h2>Por partido</h2>
+      <div class="rolagem"><table id="tabela-partidos"></table></div>
+    </section>
+
+    <section id="aba-metodo" hidden>
+      <div class="aviso">
+        <b>O que este radar diz e o que ele não diz.</b> Um alerta aqui significa
+        <b>apenas</b> que a despesa fugiu de um padrão estatístico ou de uma
+        comparação simples entre linhas do próprio arquivo público. Nada foi
+        apurado, ninguém foi ouvido, e <b>não há acusação de irregularidade</b>.
+        Gastar muito numa subcota é permitido; concentrar compras num fornecedor
+        costuma ter explicação banal; nota acima do padrão frequentemente é frete,
+        urgência ou distância. Quem decide se algo está errado é o órgão de
+        controle, com o processo administrativo na mão — não uma regra escrita em
+        Java. O que o radar faz é reduzir 114 mil linhas a algumas centenas que
+        merecem uma olhada.
+      </div>
+
+      <h2>As quatro perguntas</h2>
+      {{REGRAS}}
+
+      <h2>Como o padrão é calculado</h2>
+      <div class="caixa">
+        <p>O corte de cada regra sai da própria base, não de um número escolhido a
+        dedo. Para dizer que uma nota de combustível é alta, o radar ordena todas
+        as notas de combustível do ano e olha o percentil 99,5: a nota precisa
+        estar entre as cinco em cada mil maiores daquela subcota.</p>
+        <p>Percentil, e não média, porque a distribuição tem cauda longa — a
+        maioria das notas é pequena e algumas são enormes, e a média seria
+        arrastada justamente pelos casos que interessam. O percentil descreve o
+        normal sem se deixar contaminar pelo anormal.</p>
+        <p>Cada regra tem também um piso em reais. Sem ele, uma subcota de valores
+        baixos produziria centenas de alertas irrelevantes de R$ 40.</p>
+      </div>
+
+      <h2>De onde vêm os dados</h2>
+      <div class="caixa">
+        <p>Do arquivo em massa da Cota para o Exercício da Atividade Parlamentar,
+        publicado pela Câmara dos Deputados em
+        <a href="https://www.camara.leg.br/cotas/Ano-{{ANO}}.csv.zip" rel="nofollow">camara.leg.br/cotas/Ano-{{ANO}}.csv.zip</a>.
+        O arquivo tem {{NOTAS}} linhas e é atualizado diariamente pela Câmara.</p>
+        <p>O radar baixa o arquivo, lê cada linha, aplica as quatro regras e
+        publica esta página. Tudo isso roda de graça no GitHub Actions, uma vez
+        por dia, e o código inteiro está aberto no
+        <a href="{{REPOSITORIO}}">repositório do projeto</a>.</p>
+        <p>O valor usado é o <b>líquido</b> — o que foi efetivamente pago, já
+        descontado o que a Câmara glosou.</p>
+      </div>
+
+      <h2>Limites conhecidos</h2>
+      <div class="caixa">
+        <p><b>A cota não é o gasto total do parlamentar.</b> É só o que ele
+        reembolsa pela Câmara. Despesa paga do próprio bolso não aparece.</p>
+        <p><b>O texto é gerado a partir do arquivo.</b> Se o arquivo tem erro de
+        digitação no nome de um fornecedor, o site repete o erro.</p>
+        <p><b>Alerta não é irregularidade.</b> Vale repetir: nenhuma das quatro
+        regras prova nada. Elas existem para dar um ponto de partida a quem vai
+        olhar os documentos — os links das notas estão em cada alerta.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Radar da Cota · dados abertos da Câmara dos Deputados · página gerada em {{GERADO_EM}}.</p>
+    <p>Código aberto em <a href="{{REPOSITORIO}}">{{REPOSITORIO}}</a>. Se encontrar erro na leitura dos dados, abra uma issue.</p>
+    <p>Nenhuma acusação é feita aqui. Alertas apontam despesas fora de um padrão estatístico, não irregularidades comprovadas.</p>
+  </footer>
+</div>
+
+<script id="dados" type="application/json">{{DADOS}}</script>
+<script id="alertas" type="application/json">{{ALERTAS}}</script>
+<script>
+(function () {
+  "use strict";
+  var dados = JSON.parse(document.getElementById("dados").textContent);
+  var pacote = JSON.parse(document.getElementById("alertas").textContent);
+  var regras = pacote.regras || {};
+
+  var reais = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  var inteiro = new Intl.NumberFormat("pt-BR");
+  var data = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  function moeda(centavos) { return reais.format(centavos / 100); }
+  function curto(centavos) {
+    var reais_ = centavos / 100;
+    if (reais_ >= 1e9) return "R$ " + (reais_ / 1e9).toFixed(1).replace(".", ",") + " bi";
+    if (reais_ >= 1e6) return "R$ " + (reais_ / 1e6).toFixed(1).replace(".", ",") + " mi";
+    if (reais_ >= 1e3) return "R$ " + (reais_ / 1e3).toFixed(1).replace(".", ",") + " mil";
+    return moeda(centavos);
+  }
+  function dia(iso) {
+    if (!iso) return "";
+    var p = iso.split("-");
+    return p[2] + "/" + p[1] + "/" + p[0];
+  }
+  function escapar(t) {
+    return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ---------- abas ---------- */
+  var botoes = document.querySelectorAll("nav.abas button");
+  Array.prototype.forEach.call(botoes, function (botao) {
+    botao.addEventListener("click", function () {
+      Array.prototype.forEach.call(botoes, function (outro) {
+        outro.setAttribute("aria-selected", String(outro === botao));
+      });
+      ["alertas", "deputados", "fornecedores", "subcotas", "estados", "metodo"].forEach(function (nome) {
+        document.getElementById("aba-" + nome).hidden = nome !== botao.dataset.aba;
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  /* ---------- alertas ---------- */
+  var alertas = pacote.alertas || [];
+  var ativo = "todos";
+  var noAnoPorRegra = {};
+  (dados.alertasPorRegra || []).forEach(function (r) { noAnoPorRegra[r.regra] = r.alertas; });
+
+  function cartao(a) {
+    var html = '<article class="alerta g' + a.gravidade + '">';
+    html += '<div class="alerta-topo"><h3>' + escapar(a.titulo) + "</h3>";
+    html += '<span class="valor">' + moeda(a.centavos) + "</span></div>";
+    html += '<p style="margin-top:.35rem"><span class="etiqueta">' + escapar(regras[a.regra] || a.regra) + "</span></p>";
+    html += "<p>" + escapar(a.detalhe) + "</p>";
+    if (a.notas && a.notas.length) {
+      html += '<ul class="notas">';
+      for (var i = 0; i < a.notas.length && i < 8; i++) {
+        var n = a.notas[i];
+        html += "<li><span>" + dia(n.data) + " · doc " + escapar(n.documento || "s/n") + "</span>";
+        html += "<span>" + (n.url ? '<a href="' + escapar(n.url) + '" rel="nofollow noopener" target="_blank">' + moeda(n.centavos) + "</a>" : moeda(n.centavos)) + "</span></li>";
+      }
+      if (a.notas.length > 8) {
+        html += '<li><span>e mais ' + (a.notas.length - 8) + " notas</span><span>" + moeda(a.somaResto || 0) + "</span></li>";
+      }
+      html += "</ul>";
+    }
+    return html + "</article>";
+  }
+
+  function desenharAlertas() {
+    var lista = alertas.filter(function (a) { return ativo === "todos" || a.regra === ativo; });
+    var alvo = document.getElementById("lista-alertas");
+    var contagem = document.getElementById("contagem-alertas");
+    if (!lista.length) {
+      var noAno = noAnoPorRegra[ativo] || 0;
+      alvo.innerHTML = '<p class="selo">' + (noAno
+        ? "Nenhum alerta desta regra entrou na página. Os " + inteiro.format(noAno) +
+          " do ano estão em alertas.json."
+        : "Nenhum alerta nesta regra.") + "</p>";
+    } else {
+      var html = "";
+      for (var i = 0; i < lista.length; i++) html += cartao(lista[i]);
+      alvo.innerHTML = html;
+    }
+    var quantos = lista.length === pacote.total
+      ? inteiro.format(lista.length) + " alertas no ano"
+      : inteiro.format(lista.length) + (ativo === "todos" ? " alertas nesta página, dos "
+          : " desta regra nesta página, dos ") + inteiro.format(pacote.total) + " do ano";
+    var aviso = " Os links abrem a nota fiscal no portal da Câmara.";
+    if (alertas.length < pacote.total) {
+      aviso += " Os números dos filtros contam o ano inteiro; a lista completa está em alertas.json.";
+    }
+    contagem.textContent = quantos + ", do mais grave e mais caro para o menos." + aviso;
+  }
+
+  function desenharFiltros() {
+    var ordem = Object.keys(regras);
+    var alvo = document.getElementById("filtros");
+    var html = '<button type="button" data-regra="todos" aria-pressed="true">Todos <span class="contagem">' +
+      inteiro.format(pacote.total) + "</span></button>";
+    ordem.forEach(function (chave) {
+      var quantos = noAnoPorRegra[chave];
+      if (quantos == null) {
+        quantos = alertas.filter(function (a) { return a.regra === chave; }).length;
+      }
+      html += '<button type="button" data-regra="' + escapar(chave) + '" aria-pressed="false">' +
+        escapar(regras[chave]) + ' <span class="contagem">' + inteiro.format(quantos) + "</span></button>";
+    });
+    alvo.innerHTML = html;
+    Array.prototype.forEach.call(alvo.querySelectorAll("button"), function (botao) {
+      botao.addEventListener("click", function () {
+        ativo = botao.dataset.regra;
+        Array.prototype.forEach.call(alvo.querySelectorAll("button"), function (outro) {
+          outro.setAttribute("aria-pressed", String(outro === botao));
+        });
+        desenharAlertas();
+      });
+    });
+  }
+
+  /* ---------- tabelas ---------- */
+  function tabela(id, fatias, coluna) {
+    var maior = fatias.length ? fatias[0].centavos : 1;
+    var html = "<thead><tr><th></th><th>" + coluna + "</th><th class=\"num\">Notas</th><th class=\"num\">Total</th><th></th></tr></thead><tbody>";
+    fatias.forEach(function (f, i) {
+      html += "<tr><td class=\"pos\">" + (i + 1) + "</td><td>" + escapar(f.rotulo) + "</td>";
+      html += '<td class="num">' + inteiro.format(f.notas) + "</td>";
+      html += '<td class="num">' + moeda(f.centavos) + "</td>";
+      html += '<td style="width:14%"><div class="barra" style="width:' + Math.max(1, Math.round(100 * f.centavos / maior)) + '%"></div></td></tr>';
+    });
+    document.getElementById(id).innerHTML = html + "</tbody>";
+  }
+
+  tabela("tabela-deputados", dados.topDeputados, "Parlamentar");
+  tabela("tabela-fornecedores", dados.topFornecedores, "Fornecedor");
+  tabela("tabela-subcotas", dados.porCategoria, "Subcota");
+  tabela("tabela-estados", dados.porUf, "Estado");
+  tabela("tabela-partidos", dados.porPartido, "Partido");
+
+  var meses = dados.porMes.slice();
+  var maiorMes = meses.reduce(function (m, f) { return Math.max(m, f.centavos); }, 1);
+  var html = "<thead><tr><th>Mês</th><th class=\"num\">Notas</th><th class=\"num\">Total</th><th></th></tr></thead><tbody>";
+  meses.forEach(function (f) {
+    var p = f.rotulo.split("-");
+    html += "<tr><td>" + p[1] + "/" + p[0] + "</td>";
+    html += '<td class="num">' + inteiro.format(f.notas) + "</td>";
+    html += '<td class="num">' + moeda(f.centavos) + "</td>";
+    html += '<td style="width:14%"><div class="barra" style="width:' + Math.max(1, Math.round(100 * f.centavos / maiorMes)) + '%"></div></td></tr>';
+  });
+  document.getElementById("tabela-meses").innerHTML = html + "</tbody>";
+
+  desenharFiltros();
+  desenharAlertas();
+})();
+</script>
+</body>
+</html>
