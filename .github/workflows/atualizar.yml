@@ -1,0 +1,61 @@
+name: Atualizar o radar
+
+on:
+  schedule:
+    # Todo dia as 06:00 de Brasilia (09:00 UTC).
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: maven
+
+      - name: Rodar os testes
+        run: mvn -B test
+
+      - name: Empacotar
+        run: mvn -B package -DskipTests
+
+      - name: Conferir o gerador com a amostra de demonstracao
+        run: java -jar target/radar-da-cota.jar --demo --saida /tmp/demo
+
+      - name: Baixar as notas do ano e gerar o site
+        run: |
+          ANO="$(date -u +%Y)"
+          # Em janeiro o arquivo do ano novo ainda pode nao existir.
+          # Se o ano corrente falhar, cai para o ano anterior.
+          java -jar target/radar-da-cota.jar --ano "$ANO" --saida site \
+            || java -jar target/radar-da-cota.jar --ano "$((ANO - 1))" --saida site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publicar:
+    needs: gerar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
